@@ -28,9 +28,16 @@ export function inventoryConfig() {
   return { token, merchantId, apiBase: apiBase() }
 }
 
-/** With no Clover keys, checkout runs in demo mode, which is never allowed on the live site. */
+/** The second argument Netlify passes to every function (only the fields we use). */
+export type FnContext = { deploy?: { context?: string }; site?: { url?: string } }
+
+/** With no Clover keys, checkout runs in demo mode. */
 export const demoMode = () => cloverConfig() === null
-export const demoBlocked = () => demoMode() && process.env.CONTEXT === 'production'
+
+// Fail closed: demo mode only runs where Netlify positively reports a non-production deploy, or under `npm run dev`.
+// Production, or a missing/unknown context, refuses checkout instead of taking unpaid orders.
+const DEMO_OK = new Set(['deploy-preview', 'branch-deploy', 'dev'])
+export const demoBlocked = (ctx?: FnContext) => demoMode() && !process.env.FA_LOCAL_DEV && !DEMO_OK.has(ctx?.deploy?.context ?? '')
 
 export const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })

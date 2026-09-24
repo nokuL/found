@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { money } from '../../src/pricing'
 import { takeFromStock } from '../lib/catalog'
-import { cloverConfig, inventoryConfig, json } from '../lib/config'
+import { cloverConfig, inventoryConfig, json, type FnContext } from '../lib/config'
 import { orders, sold, type Order } from '../lib/store'
 
 /** Clover-Signature: "t=<unix>,v1=<hex HMAC-SHA256 of `${t}.${rawBody}`>" */
@@ -14,9 +14,8 @@ function verify(raw: string, header: string | null, secret: string) {
 }
 
 /** Sends the paid order to the "order" Netlify Form, so it lands in your inbox like the contact form does. */
-async function notify(o: Order, stockFailed: string[]) {
-  const site = process.env.URL
-  if (!site) return
+async function notify(o: Order, stockFailed: string[], site: string | undefined) {
+  if (!site) return console.error('Order notification skipped: no site URL', o.ref)
   const fields: Record<string, string> = {
     'form-name': 'order',
     ref: o.ref,
@@ -40,7 +39,7 @@ async function notify(o: Order, stockFailed: string[]) {
   if (!res.ok) console.error('Order notification failed', res.status)
 }
 
-export default async (req: Request) => {
+export default async (req: Request, ctx?: FnContext) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   const clover = cloverConfig()
   if (!clover?.webhookSecret) return json({ error: 'Webhook not configured' }, 503)
@@ -63,7 +62,7 @@ export default async (req: Request) => {
     const ids = order.items.map((i) => i.id)
     // With Clover inventory connected, Clover's stock count is the record of what's sold.
     const stockFailed = inventoryConfig() ? await takeFromStock(ids) : (await sold.mark(ids, order.ref), [])
-    await notify(order, stockFailed)
+    await notify(order, stockFailed, ctx?.site?.url ?? process.env.URL)
   } else if (event.status === 'DECLINED') {
     await orders.save({ ...order, status: 'declined', paymentId: event.id })
   }

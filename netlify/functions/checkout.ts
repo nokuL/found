@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { SHOP } from '../../src/data'
 import { quote, type Fulfillment } from '../../src/pricing'
 import { getCatalog } from '../lib/catalog'
-import { cloverConfig, demoBlocked, json, USER_AGENT } from '../lib/config'
+import { cloverConfig, demoBlocked, json, USER_AGENT, type FnContext } from '../lib/config'
 import { orders, sold, type Order } from '../lib/store'
 
 // Continental US only (see the FAQ), so no AK or HI.
@@ -17,9 +17,9 @@ type Body = {
 
 const str = (v: unknown, max = 120) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 
-export default async (req: Request) => {
+export default async (req: Request, ctx?: FnContext) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
-  if (demoBlocked()) return json({ error: 'Checkout is not set up yet. Please call us to place an order.' }, 503)
+  if (demoBlocked(ctx)) return json({ error: 'Checkout is not set up yet. Please call us to place an order.' }, 503)
 
   let body: Body
   try {
