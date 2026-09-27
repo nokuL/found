@@ -154,7 +154,8 @@ export function Privacy() {
       <p>Only the service providers we need to run the shop, and only for that purpose:</p>
       <Ul>
         <li><strong className="text-ink">Clover</strong> (Fiserv), to process payments.</li>
-        <li><strong className="text-ink">Netlify</strong>, which hosts this website and receives our order and contact form submissions.</li>
+        <li><strong className="text-ink">Vercel</strong>, which hosts this website, and <strong className="text-ink">Upstash</strong>, which stores order records for it.</li>
+        <li><strong className="text-ink">Resend</strong>, which delivers our order and contact form emails.</li>
         <li><strong className="text-ink">Shipping carriers</strong>, who get your name, address, and phone number to deliver your order.</li>
         <li><strong className="text-ink">Google Fonts</strong>, which serves the site's typefaces and so receives your IP address.</li>
       </Ul>

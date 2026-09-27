@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-/** Tiny path router: '/', '/checkout', '/order/success', '/order/cancelled'. Netlify rewrites unknown paths to index.html. */
+/** Tiny path router: '/', '/checkout', '/order/success', '/order/cancelled'. vercel.json rewrites unknown paths to index.html. */
 export function usePath() {
   const [path, setPath] = useState(location.pathname)
   useEffect(() => {

@@ -9,8 +9,8 @@ export default function Contact() {
     e.preventDefault()
     setStatus('sending')
     try {
-      const body = new URLSearchParams(new FormData(e.currentTarget) as unknown as Record<string, string>).toString()
-      const res = await fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
+      const body = JSON.stringify(Object.fromEntries(new FormData(e.currentTarget)))
+      const res = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
       if (!res.ok) throw new Error(String(res.status))
       setStatus('sent')
     } catch {
@@ -38,8 +38,7 @@ export default function Contact() {
             <p className="mt-2 text-lg text-ink-soft">We will reply by email within one business day.</p>
           </div>
         ) : (
-          <form name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" onSubmit={submit} className="grid gap-5 rounded-3xl bg-white p-6 text-ink sm:p-8">
-            <input type="hidden" name="form-name" value="contact" />
+          <form name="contact" method="POST" onSubmit={submit} className="grid gap-5 rounded-3xl bg-white p-6 text-ink sm:p-8">
             <p hidden><label>Leave this empty <input name="bot-field" /></label></p>
             <div className="grid gap-5 sm:grid-cols-2">
               <div><label className="label" htmlFor="c-name">Name</label><input id="c-name" name="name" required className="field" autoComplete="name" /></div>

@@ -1,4 +1,4 @@
-import { SHOP, type Product } from './data'
+import { SHOP, type Product } from './data.js'
 
 export type Fulfillment = 'ship' | 'pickup'
 

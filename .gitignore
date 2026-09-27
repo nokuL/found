@@ -23,8 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
-# Secrets and Netlify CLI state
+# Secrets and Vercel CLI state
 .env
 .env.*
 !.env.example
-.netlify
+.vercel

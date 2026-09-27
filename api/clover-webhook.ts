@@ -1,8 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
-import { money } from '../../src/pricing'
-import { takeFromStock } from '../lib/catalog'
-import { cloverConfig, inventoryConfig, json, type FnContext } from '../lib/config'
-import { orders, sold, type Order } from '../lib/store'
+import { money } from '../src/pricing.js'
+import { takeFromStock } from '../server/catalog.js'
+import { cloverConfig, inventoryConfig, json } from '../server/config.js'
+import { emailShop } from '../server/email.js'
+import { orders, sold, type Order } from '../server/store.js'
 
 /** Clover-Signature: "t=<unix>,v1=<hex HMAC-SHA256 of `${t}.${rawBody}`>" */
 function verify(raw: string, header: string | null, secret: string) {
@@ -13,34 +14,27 @@ function verify(raw: string, header: string | null, secret: string) {
   return given.length === expected.length && timingSafeEqual(given, expected)
 }
 
-/** Sends the paid order to the "order" Netlify Form, so it lands in your inbox like the contact form does. */
-async function notify(o: Order, stockFailed: string[], site: string | undefined) {
-  if (!site) return console.error('Order notification skipped: no site URL', o.ref)
-  const fields: Record<string, string> = {
-    'form-name': 'order',
-    ref: o.ref,
-    total: money(o.total),
-    fulfillment: o.fulfillment === 'ship' ? 'Ship' : 'Pickup in Apex',
-    name: `${o.customer.firstName} ${o.customer.lastName}`,
-    email: o.customer.email,
-    phone: o.customer.phone,
-    address: o.address ? `${o.address.line1} ${o.address.line2}, ${o.address.city}, ${o.address.state} ${o.address.zip}` : 'Pickup',
-    items: o.items.map((i) => `${i.name} (${money(i.price)})`).join('; '),
-  }
+/** Emails the paid order to the shop, with anything that needs doing by hand at the top. */
+async function notify(o: Order, stockFailed: string[]) {
+  const lines = [
+    `Order ${o.ref}: ${money(o.total)}`,
+    `Fulfillment: ${o.fulfillment === 'ship' ? 'Ship' : 'Pickup in Apex'}`,
+    `Name: ${o.customer.firstName} ${o.customer.lastName}`,
+    `Email: ${o.customer.email}`,
+    `Phone: ${o.customer.phone}`,
+    `Address: ${o.address ? `${o.address.line1} ${o.address.line2}, ${o.address.city}, ${o.address.state} ${o.address.zip}` : 'Pickup'}`,
+    '',
+    'Items:',
+    ...o.items.map((i) => `- ${i.name} (${money(i.price)})`),
+  ]
   if (stockFailed.length) {
     const names = o.items.filter((i) => stockFailed.includes(i.id)).map((i) => i.name)
-    fields.items += ` | ACTION NEEDED: set stock to 0 in Clover for: ${names.join(', ')}`
+    lines.unshift(`ACTION NEEDED: set stock to 0 in Clover for: ${names.join(', ')}`, '')
   }
-  const res = await fetch(`${site}/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(fields).toString(),
-  })
-  if (!res.ok) console.error('Order notification failed', res.status)
+  await emailShop({ subject: `New order ${o.ref} (${money(o.total)})`, text: lines.join('\n'), replyTo: o.customer.email })
 }
 
-export default async (req: Request, ctx?: FnContext) => {
-  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
+export async function POST(req: Request) {
   const clover = cloverConfig()
   if (!clover?.webhookSecret) return json({ error: 'Webhook not configured' }, 503)
 
@@ -62,11 +56,9 @@ export default async (req: Request, ctx?: FnContext) => {
     const ids = order.items.map((i) => i.id)
     // With Clover inventory connected, Clover's stock count is the record of what's sold.
     const stockFailed = inventoryConfig() ? await takeFromStock(ids) : (await sold.mark(ids, order.ref), [])
-    await notify(order, stockFailed, ctx?.site?.url ?? process.env.URL)
+    await notify(order, stockFailed)
   } else if (event.status === 'DECLINED') {
     await orders.save({ ...order, status: 'declined', paymentId: event.id })
   }
   return json({ ok: true })
 }
-
-export const config = { path: '/api/clover-webhook' }

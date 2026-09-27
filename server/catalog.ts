@@ -1,6 +1,6 @@
-import { CATEGORIES, FEATURED, type CategoryKey, type Grade, type Product } from '../../src/data'
-import { inventoryConfig, USER_AGENT } from './config'
-import { sold } from './store'
+import { CATEGORIES, FEATURED, type CategoryKey, type Grade, type Product } from '../src/data.js'
+import { inventoryConfig, USER_AGENT } from './config.js'
+import { sold } from './store.js'
 
 export type Catalog = { products: Product[]; soldIds: string[]; source: 'clover' | 'local' }
 
