@@ -1,4 +1,4 @@
-/** Server-side settings, read from Netlify environment variables (or .env.local in dev). */
+/** Server-side settings, read from Vercel environment variables (or .env.local in dev). */
 const apiBase = () =>
   process.env.CLOVER_API_BASE || // testing only: point at a mock Clover server
   (process.env.CLOVER_ENV === 'production' ? 'https://api.clover.com' : 'https://apisandbox.dev.clover.com')
@@ -28,16 +28,15 @@ export function inventoryConfig() {
   return { token, merchantId, apiBase: apiBase() }
 }
 
-/** The second argument Netlify passes to every function (only the fields we use). */
-export type FnContext = { deploy?: { context?: string }; site?: { url?: string } }
-
 /** With no Clover keys, checkout runs in demo mode. */
 export const demoMode = () => cloverConfig() === null
 
-// Fail closed: demo mode only runs where Netlify positively reports a non-production deploy, or under `npm run dev`.
-// Production, or a missing/unknown context, refuses checkout instead of taking unpaid orders.
-const DEMO_OK = new Set(['deploy-preview', 'branch-deploy', 'dev'])
-export const demoBlocked = (ctx?: FnContext) => demoMode() && !process.env.FA_LOCAL_DEV && !DEMO_OK.has(ctx?.deploy?.context ?? '')
+// Fail closed: demo mode only runs where Vercel positively reports a non-production deploy, or under `npm run dev`.
+// Production, or a missing/unknown VERCEL_ENV, refuses checkout instead of taking unpaid orders.
+const DEMO_OK = new Set(['preview', 'development'])
+export const demoBlocked = () => demoMode() && !process.env.FA_LOCAL_DEV && !DEMO_OK.has(process.env.VERCEL_ENV ?? '')
 
 export const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+export const str = (v: unknown, max = 120) => (typeof v === 'string' ? v.trim().slice(0, max) : '')

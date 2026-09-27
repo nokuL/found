@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@netlify/blobs": "^11.1.1",
     "@tailwindcss/vite": "^4.3.3",
+    "@upstash/redis": "^1.39.0",
     "lucide-react": "^1.48.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -25,5 +25,8 @@
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { SHOP } from '../../src/data'
-import { quote, type Fulfillment } from '../../src/pricing'
-import { getCatalog } from '../lib/catalog'
-import { cloverConfig, demoBlocked, json, USER_AGENT, type FnContext } from '../lib/config'
-import { orders, sold, type Order } from '../lib/store'
+import { SHOP } from '../src/data.js'
+import { quote, type Fulfillment } from '../src/pricing.js'
+import { getCatalog } from '../server/catalog.js'
+import { cloverConfig, demoBlocked, json, str, USER_AGENT } from '../server/config.js'
+import { orders, sold, type Order } from '../server/store.js'
 
 // Continental US only (see the FAQ), so no AK or HI.
 const STATES = new Set('AL AZ AR CA CO CT DE DC FL GA ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' '))
@@ -15,11 +15,8 @@ type Body = {
   address?: Record<string, unknown>
 }
 
-const str = (v: unknown, max = 120) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
-
-export default async (req: Request, ctx?: FnContext) => {
-  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
-  if (demoBlocked(ctx)) return json({ error: 'Checkout is not set up yet. Please call us to place an order.' }, 503)
+export async function POST(req: Request) {
+  if (demoBlocked()) return json({ error: 'Checkout is not set up yet. Please call us to place an order.' }, 503)
 
   let body: Body
   try {
@@ -139,5 +136,3 @@ export default async (req: Request, ctx?: FnContext) => {
   await orders.save({ ...order, sessionId: session.checkoutSessionId, status: 'pending', demo: false })
   return json({ ref, demo: false, href: session.href })
 }
-
-export const config = { path: '/api/checkout' }

@@ -15,17 +15,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <!-- Hidden static forms so Netlify detects them at deploy time. Field names must match the React forms. -->
-    <!-- Paid orders are posted here by the Clover webhook function, so they arrive as form notifications. -->
-    <form name="order" data-netlify="true" hidden>
-      <input name="ref" /><input name="total" /><input name="fulfillment" /><input name="name" />
-      <input name="email" /><input name="phone" /><input name="address" /><textarea name="items"></textarea>
-    </form>
-    <form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden>
-      <input name="bot-field" /><input name="name" /><input name="email" />
-      <select name="topic"><option>x</option></select>
-      <textarea name="message"></textarea>
-    </form>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
