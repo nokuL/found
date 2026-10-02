@@ -1,7 +1,7 @@
 export const CONTACT = {
   phone: '+1 (984) 284-7225',
   phoneHref: 'tel:+19842847225',
-  email: 'hello@foundagain.com', // TODO: replace with the real inbox
+  email: 'hello@found-again.co',
   address: ['5203 Haybeck Lane', 'Apex, North Carolina 27523'],
 }
 
