@@ -16,7 +16,8 @@ To test against the Clover sandbox locally, copy `.env.example` to `.env.local` 
 Locally, orders and sold items are kept in memory and reset when the dev server restarts.
 
 ## How checkout works
-0. Products load from `GET /api/products`: your Clover inventory when connected, otherwise `FEATURED` in `src/data.ts`.
+0. Products load from `GET /api/products`: your Clover inventory when connected, otherwise the items added on `/admin`
+   (or the sample `FEATURED` list in `src/data.ts` until the first one is added).
 1. The cart lives in the browser (`src/cart.tsx`). Every listing is one of a kind, so there are no quantities.
 2. `/checkout` collects contact details, then shipping (flat rate, continental US) or free pickup in Apex.
 3. `POST /api/checkout` (`api/checkout.ts`) re-reads prices and stock (from Clover when connected), rejects sold
@@ -28,6 +29,21 @@ Locally, orders and sold items are kept in memory and reset when the dev server 
 
 The contact form posts to `POST /api/contact`, which emails the message to `NOTIFY_EMAIL` (reply goes to the sender).
 Orders and sold items are stored in Upstash Redis (hashes `fa:orders` and `fa:sold`).
+
+## Adding items (/admin)
+Go to `https://YOUR-SITE/admin` and log in with `ADMIN_USERNAME` and `ADMIN_PASSWORD` (set them in Vercel's
+Environment Variables; changing the password logs everyone out). The page isn't linked from the site.
+
+- **Add item**: photo, name, category, price, and optionally the original retail price, condition grade, and a short note.
+  Photos are shrunk in the browser before upload. New items show on the shop within about a minute.
+- **With Clover inventory connected**, the item is created in Clover with the right category, tags, and a stock of 1,
+  so it can be sold in the store too. Edit details in the Clover dashboard. **Remove** hides it in Clover.
+- **Without Clover**, items are stored in Redis (hash `fa:items`) and **Remove** deletes them. The sample products
+  disappear once the first item is added.
+- **Photos** are stored in Vercel Blob (Vercel > Storage > Create > Blob, connected to the project), for Clover items
+  too, since Clover has no photo field. URLs are kept in the Redis hash `fa:photos`. Without Blob, photo upload is off.
+
+Locally (`npm run dev`), put `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env.local`; items and photos are kept in memory.
 
 ## Set up Clover
 1. Create a Clover developer sandbox account and a test merchant.
@@ -56,7 +72,7 @@ How to set up an item in Clover so it appears online:
 
 The list refreshes about every minute. Checkout always re-checks Clover, so a sold item can't be bought twice
 through the site. (An in-store sale during someone's online checkout can still overlap; refund one.)
-Photos are not pulled from Clover yet; the site shows category icons.
+Photos are not pulled from Clover; add them on `/admin` (items without one show a category icon).
 
 ## Deploy to Vercel
 1. Vercel > Add New > Project > import this GitHub repo. Build settings come from `vercel.json`.
@@ -64,8 +80,10 @@ Photos are not pulled from Clover yet; the site shows category icons.
    This adds `KV_REST_API_URL` and `KV_REST_API_TOKEN` for you.
 3. Email: create a Resend account, verify your domain there (it gives you DNS records to add), and create an
    API key. Add `RESEND_API_KEY`, `NOTIFY_EMAIL`, and `EMAIL_FROM` in Environment Variables.
-4. Add the Clover keys, then redeploy so the functions pick up the variables.
-5. Settings > Domains > add `found-again.co` and `www.found-again.co`, and add the DNS records Vercel shows
+4. Storage > Create Database > **Blob**, and connect it to the project (product photos; adds `BLOB_READ_WRITE_TOKEN`).
+5. Add `ADMIN_USERNAME` and `ADMIN_PASSWORD` for `/admin`.
+6. Add the Clover keys, then redeploy so the functions pick up the variables.
+7. Settings > Domains > add `found-again.co` and `www.found-again.co`, and add the DNS records Vercel shows
    (usually `A @ 76.76.21.21` and `CNAME www cname.vercel-dns.com`) at your domain registrar.
 
 Checkout runs in demo mode only on preview deploys (`VERCEL_ENV=preview`). Give Preview deploys their own sandbox
@@ -77,4 +95,3 @@ Clover keys, or none, so a preview can never charge the live merchant account.
   are in `POLICY` in `src/data.ts`; update `POLICY.updated` whenever you change a policy.
 - `src/data.ts`: `CONTACT.email`, the sample `FEATURED` products, `SHOP.shippingFlat` (placeholder $49), and
   `SHOP.taxRate` (7.25%, the Apex / Wake County rate; confirm with your accountant).
-- Product tiles in `src/components/Shop.tsx` and `Hero.tsx`: swap the icon tiles for real photos.

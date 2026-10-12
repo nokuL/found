@@ -1,6 +1,6 @@
-import { CATEGORIES, FEATURED, type CategoryKey, type Grade, type Product } from '../src/data.js'
+import { CATEGORIES, FEATURED, GRADES, type CategoryKey, type Product } from '../src/data.js'
 import { inventoryConfig, USER_AGENT } from './config.js'
-import { sold } from './store.js'
+import { items, photos, sold } from './store.js'
 
 export type Catalog = { products: Product[]; soldIds: string[]; source: 'clover' | 'local' }
 
@@ -15,15 +15,17 @@ type CloverItem = {
   itemStock?: { quantity?: number }
 }
 
-const GRADES: Grade[] = ['Like new', 'Excellent', 'Good']
-
 /** Clover category → site collection. Items in no matching category stay off the website (e.g. POS-only items). */
 function categoryOf(item: CloverItem): CategoryKey | undefined {
   for (const { name = '' } of item.categories?.elements ?? []) {
-    const n = name.trim().toLowerCase()
-    const c = CATEGORIES.find((c) => n === c.key || n === c.name.toLowerCase() || (c.key === 'art' && n.startsWith('art')))
-    if (c) return c.key
+    const key = categoryKey(name)
+    if (key) return key
   }
+}
+
+const categoryKey = (name: string) => {
+  const n = name.trim().toLowerCase()
+  return CATEGORIES.find((c) => n === c.key || n === c.name.toLowerCase() || (c.key === 'art' && n.startsWith('art')))?.key
 }
 
 /** Clover tags carry the extras Clover items don't have: a grade tag ("Excellent") and a retail tag ("Retail 1795"). */
@@ -51,14 +53,18 @@ async function cloverItems(): Promise<CloverItem[]> {
 let cache: { at: number; data: Catalog } | null = null
 const TTL = 60_000
 
-/** Products for the shop. From Clover when connected, otherwise the FEATURED list in src/data.ts. */
+/**
+ * Products for the shop. From Clover when connected, otherwise the items added on /admin
+ * (or the sample FEATURED list in src/data.ts until the first one is added).
+ */
 export async function getCatalog({ fresh = false } = {}): Promise<Catalog> {
   if (!fresh && cache && Date.now() - cache.at < TTL) return cache.data
-  const soldLocally = await sold.ids()
+  const [soldLocally, photoUrls] = await Promise.all([sold.ids(), photos.all()])
 
   let data: Catalog
   if (!inventoryConfig()) {
-    data = { products: FEATURED, soldIds: soldLocally, source: 'local' }
+    const added = await items.all()
+    data = { products: added.length ? added : FEATURED, soldIds: soldLocally, source: 'local' }
   } else {
     const products: Product[] = []
     const soldIds = new Set(soldLocally)
@@ -73,6 +79,7 @@ export async function getCatalog({ fresh = false } = {}): Promise<Catalog> {
     }
     data = { products, soldIds: [...soldIds], source: 'clover' }
   }
+  data.products = data.products.map((p) => (photoUrls.has(p.id) ? { ...p, photo: photoUrls.get(p.id) } : p))
   cache = { at: Date.now(), data }
   return data
 }
@@ -99,4 +106,58 @@ export async function takeFromStock(ids: string[]) {
   }
   invalidateCatalog()
   return failed
+}
+
+async function clover<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  const inv = inventoryConfig()!
+  const res = await fetch(`${inv.apiBase}/v3/merchants/${inv.merchantId}${path}`, {
+    method: init.method ?? 'GET',
+    headers: { Authorization: `Bearer ${inv.token}`, Accept: 'application/json', 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
+    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+  })
+  if (!res.ok) throw new Error(`Clover ${init.method ?? 'GET'} ${path} ${res.status}: ${await res.text()}`)
+  const text = await res.text()
+  return (text ? JSON.parse(text) : {}) as T
+}
+
+/** Finds a Clover category or tag by name (any case), creating it when it doesn't exist yet. */
+async function findOrCreate(kind: 'categories' | 'tags', name: string, matches: (n: string) => boolean) {
+  const { elements = [] } = await clover<{ elements?: { id: string; name?: string }[] }>(`/${kind}?limit=1000`)
+  const found = elements.find((e) => matches((e.name ?? '').trim().toLowerCase()))
+  return found?.id ?? (await clover<{ id: string }>(`/${kind}`, { method: 'POST', body: { name } })).id
+}
+
+/**
+ * Adds an item from /admin to Clover, set up the way the README's "Clover inventory" section describes:
+ * site category, grade and retail tags, and a stock count of 1. Returns the new Clover item id.
+ */
+export async function createCloverItem(p: Omit<Product, 'id'>) {
+  const { id } = await clover<{ id: string }>('/items', {
+    method: 'POST',
+    body: { name: p.name, price: Math.round(p.price * 100), priceType: 'FIXED', alternateName: p.note || undefined, hidden: false },
+  })
+  try {
+    const cat = CATEGORIES.find((c) => c.key === p.category)!
+    const categoryId = await findOrCreate('categories', cat.name, (n) => categoryKey(n) === p.category)
+    await clover('/category_items', { method: 'POST', body: { elements: [{ category: { id: categoryId }, item: { id } }] } })
+
+    const tagNames = [p.grade, p.retail ? `Retail ${p.retail}` : undefined].filter((t): t is string => !!t)
+    for (const name of tagNames) {
+      const tagId = await findOrCreate('tags', name, (n) => n === name.toLowerCase())
+      await clover('/tag_items', { method: 'POST', body: { elements: [{ tag: { id: tagId }, item: { id } }] } })
+    }
+    await clover(`/item_stocks/${id}`, { method: 'PUT', body: { quantity: 1 } })
+  } catch (err) {
+    // Don't leave a half-set-up item in Clover.
+    await clover(`/items/${id}`, { method: 'DELETE' }).catch((e) => console.error('Clover cleanup failed for', id, e))
+    throw err
+  }
+  invalidateCatalog()
+  return id
+}
+
+/** Takes an item off the website by hiding it in Clover. It stays in Clover, so it can be relisted there. */
+export async function hideCloverItem(id: string) {
+  await clover(`/items/${id}`, { method: 'POST', body: { hidden: true } })
+  invalidateCatalog()
 }

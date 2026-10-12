@@ -39,7 +39,8 @@ export const CATEGORIES: {
   },
 ]
 
-export type Grade = 'Like new' | 'Excellent' | 'Good'
+export const GRADES = ['Like new', 'Excellent', 'Good'] as const
+export type Grade = (typeof GRADES)[number]
 
 export type Product = {
   id: string
@@ -51,11 +52,13 @@ export type Product = {
   retail?: number
   grade?: Grade
   note: string
+  /** Photo URL, added on /admin. Without one, the shop shows the category icon. */
+  photo?: string
 }
 
 /**
- * Fallback product list, used only when Clover inventory is not connected (no CLOVER_INVENTORY_TOKEN).
- * Once it is, products come from Clover; see README "Clover inventory".
+ * Sample products, shown only until the first item is added on /admin, and only when Clover inventory is not
+ * connected (no CLOVER_INVENTORY_TOKEN). With Clover, products come from Clover; see README "Clover inventory".
  * Each listing is a single, one-of-a-kind item. `id` must stay stable: carts and sold records use it.
  */
 export const FEATURED: Product[] = [

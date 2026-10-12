@@ -142,7 +142,7 @@ export default function Checkout() {
           <ul className="mt-5 divide-y divide-sage">
             {q.items.map((p) => (
               <li key={p.id} className="flex items-center gap-4 py-3">
-                <Thumb category={p.category} />
+                <Thumb category={p.category} photo={p.photo} />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold leading-snug">{p.name}</p>
                   <button type="button" onClick={() => cart.remove(p.id)} className="text-sm font-medium text-forest underline underline-offset-4">Remove</button>

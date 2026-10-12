@@ -49,7 +49,7 @@ export default function CartDrawer() {
             <ul className="flex-1 divide-y divide-sage overflow-y-auto px-5">
               {items.map((p) => (
                 <li key={p.id} className="flex gap-4 py-4">
-                  <Thumb category={p.category} />
+                  <Thumb category={p.category} photo={p.photo} />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold leading-snug">{p.name}</p>
                     <p className="text-sm text-ink-soft">{p.grade ? `${p.grade} · ` : ''}one of a kind</p>
