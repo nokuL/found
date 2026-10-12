@@ -76,9 +76,12 @@ export default function Shop() {
             const off = p.retail ? Math.round((1 - p.price / p.retail) * 100) : 0
             return (
               <li key={p.id} className="flex flex-col overflow-hidden rounded-2xl border border-sage bg-paper">
-                {/* Swap this tile for a product photo: <img src="..." alt={p.name} className="aspect-[4/3] w-full object-cover" /> */}
                 <div className={`relative grid aspect-[4/3] place-items-center ${TILE[p.category]}`}>
-                  <Icon className="h-20 w-20 opacity-80" strokeWidth={1.1} />
+                  {p.photo ? (
+                    <img src={p.photo} alt={p.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                  ) : (
+                    <Icon className="h-20 w-20 opacity-80" strokeWidth={1.1} />
+                  )}
                   {off > 0 && (
                     <span className="absolute left-4 top-4 rounded-full bg-white px-3 py-1 text-sm font-semibold text-forest">
                       {off}% below retail

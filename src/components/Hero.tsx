@@ -3,7 +3,7 @@ import { useCart } from '../cart-context'
 import AddToCart from './AddToCart'
 import { ICONS, TILE } from './tiles'
 
-/** Hero pick: the first product that hasn't sold (Clover's item order, or FEATURED's order). */
+/** Hero pick: the first product that hasn't sold (Clover's item order, or the newest item added on /admin). */
 function Spotlight() {
   const { products, sold, status } = useCart()
   const p = products.find((x) => !sold.has(x.id))
@@ -13,7 +13,11 @@ function Spotlight() {
   return (
     <div className="relative overflow-hidden rounded-[1.75rem] bg-white shadow-[0_24px_60px_-28px_rgba(16,40,28,.45)] ring-1 ring-sage">
       <div className={`relative grid aspect-[16/10] place-items-center ${TILE[p.category]}`}>
-        <Icon className="h-28 w-28 opacity-80" strokeWidth={1} />
+        {p.photo ? (
+          <img src={p.photo} alt={p.name} className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <Icon className="h-28 w-28 opacity-80" strokeWidth={1} />
+        )}
         <span className="absolute left-5 top-5 rounded-full bg-white px-3 py-1 text-sm font-semibold text-forest">Pick of the week</span>
       </div>
       <div className="p-6 sm:p-8">

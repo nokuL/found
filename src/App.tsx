@@ -8,6 +8,7 @@ import Faq from './components/Faq'
 import Contact from './components/Contact'
 import Footer from './components/Footer'
 import CartDrawer from './components/CartDrawer'
+import Admin from './components/Admin'
 import Checkout from './components/Checkout'
 import { OrderCancelled, OrderSuccess } from './components/OrderResult'
 import { Privacy, Returns, Shipping, Terms } from './components/Policies'
@@ -36,6 +37,7 @@ const PAGES: Record<string, () => React.JSX.Element> = {
   '/shipping': Shipping,
   '/privacy': Privacy,
   '/terms': Terms,
+  '/admin': Admin,
 }
 
 export default function App() {

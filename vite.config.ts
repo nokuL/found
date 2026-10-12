@@ -9,12 +9,14 @@ function vercelFunctionsDev(): Plugin {
     '/api/clover-webhook': '/api/clover-webhook.ts',
     '/api/contact': '/api/contact.ts',
     '/api/products': '/api/products.ts',
+    '/api/admin/login': '/api/admin/login.ts',
+    '/api/admin/items': '/api/admin/items.ts',
   }
   return {
     name: 'vercel-functions-dev',
     configureServer(server) {
       // Server keys from .env.local, available to functions as they are on Vercel.
-      const env = loadEnv(server.config.mode, process.cwd(), ['CLOVER_', 'RESEND_', 'NOTIFY_', 'EMAIL_'])
+      const env = loadEnv(server.config.mode, process.cwd(), ['CLOVER_', 'RESEND_', 'NOTIFY_', 'EMAIL_', 'ADMIN_', 'BLOB_'])
       for (const [k, v] of Object.entries(env)) process.env[k] ??= v
       process.env.FA_LOCAL_DEV = '1' // functions use an in-memory store instead of Redis
 
